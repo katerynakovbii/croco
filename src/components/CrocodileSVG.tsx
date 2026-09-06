@@ -3,18 +3,20 @@
 import { motion, useAnimation } from "framer-motion";
 import { useEffect } from "react";
 
-// Single hinge point where upper and lower jaw meet
+// Hinge point — where both jaws meet (single connection point)
 const HX = 80;
-const HY = 238;
+const HY = 250;
 
-// 12 clickable lower teeth — start at x=200 so they're in the visible gap when open
-const LOWER_TEETH_X = Array.from({ length: 12 }, (_, i) => 200 + i * 38);
+// Upper jaw is DRAWN at 15° open angle (not flat).
+// Snap rotates +15° around the hinge to close it — mathematically exact closure.
+const SNAP_ANGLE = 15;
 
-// 11 decorative upper teeth along upper jaw interior
-const UPPER_TEETH_X = Array.from({ length: 11 }, (_, i) => 219 + i * 38);
+// Lower teeth: 12 teeth starting where the gap is wide enough to see them
+const LOWER_TEETH_X = Array.from({ length: 12 }, (_, i) => 265 + i * 32);
 
-// Upper jaw: open at -27° around hinge, closes to 0° only on trigger tooth snap
-const OPEN_ANGLE = -27;
+// Upper decorative teeth along the bottom interior of the upper jaw
+// y_base for each: 250 - (x - 80) * tan(15°)
+const UPPER_TEETH_X = Array.from({ length: 11 }, (_, i) => 281 + i * 32);
 
 interface Props {
   pressedTeeth: number[];
@@ -31,8 +33,9 @@ export function CrocodileSVG({ pressedTeeth, isMyTurn, phase, snapped, paused, o
 
   useEffect(() => {
     if (snapped) {
+      // Rotate +15° around hinge → bottom edge swings to y=250, mouth closed
       jawControls.start({
-        rotate: 0,
+        rotate: SNAP_ANGLE,
         transition: { type: "spring", stiffness: 350, damping: 25 },
       });
       wrapperControls.start({
@@ -41,25 +44,24 @@ export function CrocodileSVG({ pressedTeeth, isMyTurn, phase, snapped, paused, o
       });
     } else {
       jawControls.start({
-        rotate: OPEN_ANGLE,
+        rotate: 0,
         transition: { type: "spring", stiffness: 180, damping: 22 },
       });
     }
   }, [snapped, jawControls, wrapperControls]);
 
   return (
-    <motion.div animate={wrapperControls} className="w-full max-w-2xl mx-auto select-none mt-28">
-      {/* overflow:visible so rotated snout renders above SVG bounds */}
-      <svg viewBox="0 0 720 295" className="w-full" style={{ overflow: "visible" }} aria-label="Crocodile">
+    <motion.div animate={wrapperControls} className="w-full max-w-2xl mx-auto select-none">
+      <svg viewBox="0 0 700 280" className="w-full" style={{ overflow: "visible" }} aria-label="Crocodile">
 
-        {/* Lower teeth — rendered BEFORE lower jaw so pressed ones hide behind it */}
+        {/* Lower teeth — rendered BEFORE lower jaw so pressed ones disappear behind it */}
         {LOWER_TEETH_X.map((x, i) => {
           const pressed = pressedTeeth.includes(i);
           const canPress = isMyTurn && phase === "playing" && !pressed && !snapped && !paused;
           return (
             <g key={i}>
               <motion.polygon
-                points={`${x - 13},${HY} ${x},${HY - 43} ${x + 13},${HY}`}
+                points={`${x - 12},${HY} ${x},${HY - 44} ${x + 12},${HY}`}
                 fill={pressed ? "#6b7280" : "#ffffff"}
                 stroke={pressed ? "#4b5563" : "#374151"}
                 strokeWidth="2"
@@ -68,9 +70,9 @@ export function CrocodileSVG({ pressedTeeth, isMyTurn, phase, snapped, paused, o
                 transition={{ type: "spring", stiffness: 400, damping: 28 }}
               />
               <rect
-                x={x - 22}
-                y={HY - 47}
-                width={44}
+                x={x - 20}
+                y={HY - 48}
+                width={40}
                 height={54}
                 fill="transparent"
                 style={{ cursor: canPress ? "pointer" : "default" }}
@@ -82,62 +84,67 @@ export function CrocodileSVG({ pressedTeeth, isMyTurn, phase, snapped, paused, o
           );
         })}
 
-        {/* Lower jaw body — static, flat, rendered ON TOP of teeth */}
+        {/* Lower jaw — static, covers pressed teeth */}
         <path
-          d={`M ${HX} ${HY} L ${HX} ${HY + 18} Q 105 ${HY + 10} 660 ${HY + 10} Q 682 ${HY + 14} 676 295 L ${HX} 295 Z`}
+          d={`M ${HX} ${HY} Q 120 ${HY} 648 ${HY} Q 670 ${HY + 4} 665 280 L ${HX} 280 Z`}
           fill="#2e7d32"
         />
 
-        {/* Upper jaw — tapers to single hinge point, no left wall */}
+        {/* Upper jaw — DRAWN already open at 15° above horizontal.
+            Snap rotates +15° around hinge, closing bottom edge exactly to y=250. */}
         <motion.g
           animate={jawControls}
-          initial={{ rotate: OPEN_ANGLE }}
+          initial={{ rotate: 0 }}
           style={{ transformOrigin: `${HX}px ${HY}px` }}
         >
           {/*
-            Path tapers to a POINT at (HX, HY) — no vertical left wall.
-            In closed position (rotate=0) the bottom edge aligns with lower jaw top.
-            The jaw wedges open by rotating around the hinge.
+            Upper jaw wedge shape — open mouth position:
+            Bottom edge: (80,250) → (650,97)   [15° above horizontal = 250 - dx*tan15°]
+            Top edge:    (62,182) → (632,29)    [offset ~70px above bottom edge, perpendicular]
+            Head section rises higher on the left for body/eye area.
           */}
           <path
-            d={`
-              M ${HX} ${HY}
-              L ${HX} 112
-              Q 82 62 108 65
-              Q 124 43 150 65
-              Q 170 47 200 65
-              Q 220 57 658 185
-              Q 679 193 672 220
-              L 656 ${HY}
-              Q 420 ${HY} ${HX} ${HY} Z
-            `}
+            d="
+              M 80 250
+              L 62 182
+              Q 62 100 102 102
+              Q 120 80 148 102
+              Q 168 86 196 102
+              Q 228 94 632 29
+              Q 652 24 656 50
+              L 648 97
+              L 80 250 Z
+            "
             fill="#2e7d32"
           />
 
-          {/* Decorative upper teeth along bottom interior of snout */}
-          {UPPER_TEETH_X.map((x, i) => (
-            <polygon
-              key={i}
-              points={`${x - 10},${HY} ${x},${HY + 26} ${x + 10},${HY}`}
-              fill="#ffffff"
-              stroke="#374151"
-              strokeWidth="2"
-              strokeLinejoin="round"
-            />
-          ))}
+          {/* Decorative upper teeth along the bottom edge of upper jaw */}
+          {UPPER_TEETH_X.map((x) => {
+            const yBase = HY - (x - HX) * Math.tan((15 * Math.PI) / 180);
+            return (
+              <polygon
+                key={x}
+                points={`${x - 10},${yBase} ${x},${yBase + 26} ${x + 10},${yBase}`}
+                fill="#ffffff"
+                stroke="#374151"
+                strokeWidth="2"
+                strokeLinejoin="round"
+              />
+            );
+          })}
 
           {/* Left eye */}
-          <ellipse cx="110" cy="77" rx="21" ry="19" fill="white" />
-          <circle cx="116" cy="79" r="12" fill="#1a237e" />
-          <circle cx="121" cy="74" r="4.5" fill="white" />
+          <ellipse cx="112" cy="94" rx="20" ry="18" fill="white" />
+          <circle cx="118" cy="96" r="11" fill="#1a237e" />
+          <circle cx="123" cy="91" r="4" fill="white" />
 
           {/* Right eye */}
-          <ellipse cx="162" cy="71" rx="19" ry="17" fill="white" />
-          <circle cx="168" cy="73" r="11" fill="#1a237e" />
-          <circle cx="173" cy="68" r="4" fill="white" />
+          <ellipse cx="160" cy="88" rx="18" ry="16" fill="white" />
+          <circle cx="166" cy="90" r="10" fill="#1a237e" />
+          <circle cx="171" cy="85" r="3.5" fill="white" />
 
           {/* Nostril near snout tip */}
-          <ellipse cx="640" cy="158" rx="9" ry="6" fill="#1b5e20" />
+          <ellipse cx="628" cy="52" rx="8" ry="5" fill="#1b5e20" />
         </motion.g>
 
       </svg>
