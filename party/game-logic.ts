@@ -88,10 +88,11 @@ export function handlePlayAgain(state: RoomState, playerId: string): RoomState {
 export function addChatMessage(
   state: RoomState,
   from: string,
+  ts: number,
   text?: string,
   emoji?: string
 ): RoomState {
-  const message: ChatMessage = { from, ts: Date.now(), text, emoji };
+  const message: ChatMessage = { from, ts, text, emoji };
   return { ...state, chat: [...state.chat.slice(-99), message] };
 }
 

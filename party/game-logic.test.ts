@@ -124,6 +124,18 @@ describe("handlePlayAgain", () => {
     }
     expect(results.size).toBeGreaterThan(1);
   });
+
+  it("loser goes first — works when loser is p2", () => {
+    const state: RoomState = {
+      ...twoPlayerPlaying(5),
+      phase: "ended",
+      loser: "p2",
+      pressedTeeth: [0],
+    };
+    let s = handlePlayAgain(state, "p1");
+    s = handlePlayAgain(s, "p2");
+    expect(s.currentTurn).toBe("p2");
+  });
 });
 
 describe("toClientState", () => {
@@ -143,8 +155,9 @@ describe("addChatMessage", () => {
   it("caps chat history at 100 messages", () => {
     let state = twoPlayerPlaying(0);
     for (let i = 0; i < 105; i++) {
-      state = addChatMessage(state, "p1", `msg ${i}`);
+      state = addChatMessage(state, "p1", Date.now(), `msg ${i}`);
     }
     expect(state.chat).toHaveLength(100);
+    expect(state.chat[0].text).toBe("msg 5");
   });
 });
