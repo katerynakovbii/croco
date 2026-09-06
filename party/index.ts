@@ -54,7 +54,12 @@ export default class GameRoom implements Party.Server {
   }
 
   onMessage(message: string, sender: Party.Connection) {
-    const msg = JSON.parse(message) as ClientMessage;
+    let msg: ClientMessage;
+    try {
+      msg = JSON.parse(message) as ClientMessage;
+    } catch {
+      return;
+    }
 
     switch (msg.type) {
       case "press": {
@@ -88,6 +93,11 @@ export default class GameRoom implements Party.Server {
 
   onClose(conn: Party.Connection) {
     if (!this.state.players.includes(conn.id)) return;
+
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
 
     this.disconnectedPlayerId = conn.id;
     this.state = { ...this.state, paused: true };
