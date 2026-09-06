@@ -7,7 +7,7 @@ export default function Home() {
 
   const createGame = () => {
     const roomId = crypto.randomUUID().slice(0, 8);
-    router.push(`/game/${roomId}`);
+    router.push(`/game?room=${roomId}`);
   };
 
   return (
