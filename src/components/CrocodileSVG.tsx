@@ -54,35 +54,43 @@ export function CrocodileSVG({ pressedTeeth, isMyTurn, phase, snapped, paused, o
     <motion.div animate={wrapperControls} className="w-full max-w-2xl mx-auto select-none">
       <svg viewBox="0 0 700 280" className="w-full" style={{ overflow: "visible" }} aria-label="Crocodile">
 
-        {/* Lower teeth — rendered BEFORE lower jaw so pressed ones disappear behind it */}
-        {LOWER_TEETH_X.map((x, i) => {
-          const pressed = pressedTeeth.includes(i);
-          const canPress = isMyTurn && phase === "playing" && !pressed && !snapped && !paused;
-          return (
-            <g key={i}>
-              <motion.polygon
-                points={`${x - 12},${HY} ${x},${HY - 44} ${x + 12},${HY}`}
-                fill={pressed ? "#6b7280" : "#ffffff"}
-                stroke={pressed ? "#4b5563" : "#374151"}
-                strokeWidth="2"
-                strokeLinejoin="round"
-                animate={{ y: pressed ? 72 : 0 }}
-                transition={{ type: "spring", stiffness: 400, damping: 28 }}
-              />
-              <rect
-                x={x - 20}
-                y={HY - 48}
-                width={40}
-                height={54}
-                fill="transparent"
-                style={{ cursor: canPress ? "pointer" : "default" }}
-                onClick={() => canPress && onPressTooth(i)}
-                role={canPress ? "button" : undefined}
-                aria-label={canPress ? `Press tooth ${i + 1}` : undefined}
-              />
-            </g>
-          );
-        })}
+        {/* Clip teeth to y < HY: tooth sinks into jaw and vanishes exactly at the jaw edge */}
+        <defs>
+          <clipPath id="jaw-clip">
+            <rect x="0" y="-200" width="700" height={HY + 200} />
+          </clipPath>
+        </defs>
+
+        <g clipPath="url(#jaw-clip)">
+          {LOWER_TEETH_X.map((x, i) => {
+            const pressed = pressedTeeth.includes(i);
+            const canPress = isMyTurn && phase === "playing" && !pressed && !snapped && !paused;
+            return (
+              <g key={i}>
+                <motion.polygon
+                  points={`${x - 12},${HY} ${x},${HY - 44} ${x + 12},${HY}`}
+                  fill={pressed ? "#6b7280" : "#ffffff"}
+                  stroke={pressed ? "#4b5563" : "#374151"}
+                  strokeWidth="2"
+                  strokeLinejoin="round"
+                  animate={{ y: pressed ? 48 : 0 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 28 }}
+                />
+                <rect
+                  x={x - 20}
+                  y={HY - 48}
+                  width={40}
+                  height={54}
+                  fill="transparent"
+                  style={{ cursor: canPress ? "pointer" : "default" }}
+                  onClick={() => canPress && onPressTooth(i)}
+                  role={canPress ? "button" : undefined}
+                  aria-label={canPress ? `Press tooth ${i + 1}` : undefined}
+                />
+              </g>
+            );
+          })}
+        </g>
 
         {/* Lower jaw — static, covers pressed teeth */}
         <path
